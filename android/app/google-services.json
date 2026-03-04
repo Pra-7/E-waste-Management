@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "886340850824",
+    "project_id": "e-waste-collector-dbd6d",
+    "storage_bucket": "e-waste-collector-dbd6d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:886340850824:android:fac82c49e81dc696c23b3d",
+        "android_client_info": {
+          "package_name": "com.example.e_waste_collector"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBi7qybIsPm2dtfQaJJN_i26ifqSOAOaDU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
