@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'citizen/citizen_home.dart';
-import 'collector/collector_home.dart';
+import 'collector/collector_main.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -17,127 +17,98 @@ class _LoginPageState extends State<LoginPage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
 
-  final _formKey = GlobalKey<FormState>();
-
-  String selectedRole = 'Citizen';
   bool isLogin = true;
   bool loading = false;
 
-  @override
-  void dispose() {
-    emailController.dispose();
-    passwordController.dispose();
-    super.dispose();
-  }
+  String selectedRole = "Citizen";
 
   @override
   Widget build(BuildContext context) {
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('E-Waste Login'),
-        centerTitle: true,
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Form(
-          key: _formKey,
+
+      body: Center(
+
+        child: SingleChildScrollView(
+
+          padding: const EdgeInsets.all(25),
+
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+
             children: [
 
-              /// ROLE SELECT
-              DropdownButtonFormField<String>(
-                value: selectedRole,
-                decoration: const InputDecoration(
-                  labelText: "Select Role",
-                  border: OutlineInputBorder(),
+              const Icon(Icons.recycling, size: 70, color: Colors.green),
+
+              const SizedBox(height: 20),
+
+              Text(
+                isLogin ? "Login" : "Create Account",
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: "Citizen",
-                    child: Text("Citizen"),
-                  ),
-                  DropdownMenuItem(
-                    value: "Collector",
-                    child: Text("Collector"),
-                  ),
-                ],
-                onChanged: isLogin
-                    ? null
-                    : (value) {
-                        setState(() {
-                          selectedRole = value!;
-                        });
-                      },
               ),
 
-              const SizedBox(height: 15),
+              const SizedBox(height: 30),
+
+              /// ROLE DROPDOWN (ONLY FOR SIGNUP)
+              if (!isLogin) ...[
+                DropdownButtonFormField(
+                  initialValue: selectedRole,
+                  items: const [
+                    DropdownMenuItem(value: "Citizen", child: Text("Citizen")),
+                    DropdownMenuItem(value: "Collector", child: Text("Collector")),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedRole = value!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 10),
+              ],
 
               /// EMAIL
-              TextFormField(
+              TextField(
                 controller: emailController,
                 decoration: const InputDecoration(
                   labelText: "Email",
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return "Enter email";
-                  }
-                  return null;
-                },
               ),
 
               const SizedBox(height: 10),
 
               /// PASSWORD
-              TextFormField(
+              TextField(
                 controller: passwordController,
                 obscureText: true,
                 decoration: const InputDecoration(
                   labelText: "Password",
                   border: OutlineInputBorder(),
                 ),
-                validator: (value) {
-                  if (value == null || value.length < 6) {
-                    return "Password must be at least 6 characters";
-                  }
-                  return null;
-                },
               ),
 
               const SizedBox(height: 20),
 
-              /// LOGIN / SIGNUP BUTTON
               loading
                   ? const CircularProgressIndicator()
-                  : SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-
-                          if (!_formKey.currentState!.validate()) return;
-
-                          setState(() => loading = true);
-
-                          if (isLogin) {
-                            await loginUser();
-                          } else {
-                            await signupUser();
-                          }
-
-                          if (!mounted) return;
-                          setState(() => loading = false);
-                        },
-                        child: Text(isLogin ? "Login" : "Sign Up"),
-                      ),
+                  : ElevatedButton(
+                      onPressed: () {
+                        if (isLogin) {
+                          loginUser();
+                        } else {
+                          signupUser();
+                        }
+                      },
+                      child: Text(isLogin ? "Login" : "Signup"),
                     ),
 
-              /// SWITCH LOGIN / SIGNUP
+              const SizedBox(height: 10),
+
               TextButton(
                 onPressed: () {
                   setState(() {
@@ -146,8 +117,8 @@ class _LoginPageState extends State<LoginPage> {
                 },
                 child: Text(
                   isLogin
-                      ? "New user? Create account"
-                      : "Already have an account? Login",
+                      ? "Don't have account? Sign up"
+                      : "Already have account? Login",
                 ),
               )
             ],
@@ -157,69 +128,47 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  /// -------------------------
-  /// SIGNUP FUNCTION
-  /// -------------------------
+  /// SIGNUP
+
   Future<void> signupUser() async {
-  try {
 
-    print("Signup started");
+    try {
 
-    UserCredential cred = await _auth.createUserWithEmailAndPassword(
-      email: emailController.text.trim(),
-      password: passwordController.text.trim(),
-    );
+      setState(() => loading = true);
 
-    String uid = cred.user!.uid;
-
-    print("User created: $uid");
-
-    await _firestore.collection("users").doc(uid).set({
-      "email": emailController.text.trim(),
-      "role": selectedRole,
-      "createdAt": FieldValue.serverTimestamp(),
-    });
-
-    print("Firestore data saved");
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Account created successfully")),
-    );
-
-    if (selectedRole == "Collector") {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const CollectorHomePage(),
-        ),
+      UserCredential cred = await _auth.createUserWithEmailAndPassword(
+        email: emailController.text.trim(),
+        password: passwordController.text.trim(),
       );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (_) => const CitizenHomePage(),
-        ),
+
+      String uid = cred.user!.uid;
+
+      /// STORE ONLY BASIC DATA
+      await _firestore.collection("users").doc(uid).set({
+        "email": emailController.text.trim(),
+        "role": selectedRole,
+        "createdAt": FieldValue.serverTimestamp(),
+      });
+
+      navigateUser(selectedRole);
+
+    } catch (e) {
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
       );
     }
 
-  } catch (e) {
-
-    print("Signup error: $e");
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Signup failed: $e")),
-    );
+    setState(() => loading = false);
   }
-}
-  /// -------------------------
-  /// LOGIN FUNCTION
-  /// -------------------------
+
+  /// LOGIN
+
   Future<void> loginUser() async {
+
     try {
+
+      setState(() => loading = true);
 
       UserCredential cred = await _auth.signInWithEmailAndPassword(
         email: emailController.text.trim(),
@@ -233,30 +182,34 @@ class _LoginPageState extends State<LoginPage> {
 
       String role = doc["role"];
 
-      if (!mounted) return;
+      navigateUser(role);
 
-      if (role == "Collector") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const CollectorHomePage(),
-          ),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const CitizenHomePage(),
-          ),
-        );
-      }
-
-    } on FirebaseAuthException catch (e) {
-
-      if (!mounted) return;
+    } catch (e) {
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? "Login failed")),
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+
+    setState(() => loading = false);
+  }
+
+  /// NAVIGATION
+
+  void navigateUser(String role) {
+
+    if (role == "Collector") {
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const CollectorMainPage()),
+      );
+
+    } else {
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const CitizenHomePage()),
       );
     }
   }

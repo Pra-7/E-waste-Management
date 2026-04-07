@@ -1,12 +1,12 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'firebase_options.dart';
 import 'login.dart';
 import 'citizen/citizen_home.dart';
-import 'collector/collector_home.dart';
+import 'collector/collector_main.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,11 +23,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'E-Waste Management',
-      theme: ThemeData(primarySwatch: Colors.green),
-      home: const AuthCheck(),
+      title: 'E-Waste App',
+      home: AuthCheck(),
     );
   }
 }
@@ -37,60 +36,39 @@ class AuthCheck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    User? user = FirebaseAuth.instance.currentUser;
+
+    /// If not logged in → Login page
+    if (user == null) {
+      return const LoginPage();
+    }
+
+    /// If logged in → Check role from Firestore
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection("users")
+          .doc(user.uid)
+          .get(),
+
       builder: (context, snapshot) {
 
-        // 🔹 Firebase still checking login state
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (!snapshot.hasData) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
           );
         }
 
-        // 🔹 No user logged in
-        if (!snapshot.hasData) {
-          return const LoginPage();
+        var data = snapshot.data!.data() as Map<String, dynamic>;
+        String role = data["role"];
+
+        /// Open correct dashboard
+        if (role == "Collector") {
+          return const CollectorMainPage();
+        } else {
+          return const CitizenHomePage();
         }
-
-        final user = snapshot.data!;
-
-        return FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .get(),
-          builder: (context, roleSnapshot) {
-
-            // 🔹 Firestore loading
-            if (roleSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-
-            // 🔹 If Firestore user data does not exist
-            if (!roleSnapshot.hasData || !roleSnapshot.data!.exists) {
-
-              // Logout invalid user
-              FirebaseAuth.instance.signOut();
-
-              return const LoginPage();
-            }
-
-            final data =
-                roleSnapshot.data!.data() as Map<String, dynamic>;
-
-            final role = data['role'];
-
-            // 🔹 Navigate based on role
-            if (role == 'Collector') {
-              return const CollectorHomePage();
-            } else {
-              return const CitizenHomePage();
-            }
-          },
-        );
       },
     );
   }

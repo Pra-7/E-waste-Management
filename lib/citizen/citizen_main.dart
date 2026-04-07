@@ -4,18 +4,18 @@ import 'my_requests.dart';
 import 'notifications_page.dart';
 import 'profile_page.dart';
 
-class CitizenHomePage extends StatefulWidget {
-  const CitizenHomePage({super.key});
+class CitizenMainPage extends StatefulWidget {
+  const CitizenMainPage({super.key});
 
   @override
-  State<CitizenHomePage> createState() => _CitizenHomePageState();
+  State<CitizenMainPage> createState() => _CitizenMainPageState();
 }
 
-class _CitizenHomePageState extends State<CitizenHomePage> {
+class _CitizenMainPageState extends State<CitizenMainPage> {
 
   int currentIndex = 0;
 
-  final List<Widget> pages = const [
+  final pages = const [
     HomePage(),
     MyRequestsPage(),
     NotificationsPage(),
@@ -39,8 +39,6 @@ class _CitizenHomePageState extends State<CitizenHomePage> {
           });
         },
 
-        type: BottomNavigationBarType.fixed,
-
         items: const [
 
           BottomNavigationBarItem(
@@ -49,7 +47,7 @@ class _CitizenHomePageState extends State<CitizenHomePage> {
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
+            icon: Icon(Icons.list),
             label: "Requests",
           ),
 

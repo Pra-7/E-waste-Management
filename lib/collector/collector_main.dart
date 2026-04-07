@@ -1,25 +1,25 @@
 import 'package:flutter/material.dart';
-import 'home_page.dart';
-import 'my_requests.dart';
-import 'notifications_page.dart';
-import 'profile_page.dart';
+import 'collector_home.dart';
+import 'collector_requests.dart';
+import 'completed_pickups.dart';
+import 'collector_profile.dart';
 
-class CitizenHomePage extends StatefulWidget {
-  const CitizenHomePage({super.key});
+class CollectorMainPage extends StatefulWidget {
+  const CollectorMainPage({super.key});
 
   @override
-  State<CitizenHomePage> createState() => _CitizenHomePageState();
+  State<CollectorMainPage> createState() => _CollectorMainPageState();
 }
 
-class _CitizenHomePageState extends State<CitizenHomePage> {
+class _CollectorMainPageState extends State<CollectorMainPage> {
 
   int currentIndex = 0;
 
-  final List<Widget> pages = const [
-    HomePage(),
-    MyRequestsPage(),
-    NotificationsPage(),
-    ProfilePage(),
+  final pages = const [
+    CollectorHomePage(),
+    CollectorRequestsPage(),
+    CompletedPickupsPage(),
+    CollectorProfilePage(),
   ];
 
   @override
@@ -49,13 +49,13 @@ class _CitizenHomePageState extends State<CitizenHomePage> {
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
+            icon: Icon(Icons.list),
             label: "Requests",
           ),
 
           BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: "Notifications",
+            icon: Icon(Icons.check_circle),
+            label: "Completed",
           ),
 
           BottomNavigationBarItem(
