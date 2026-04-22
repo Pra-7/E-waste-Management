@@ -1,3 +1,6 @@
+// ─────────────────────────────────────────────────────────
+//  completed_pickups.dart
+// ─────────────────────────────────────────────────────────
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -5,116 +8,152 @@ import 'package:firebase_auth/firebase_auth.dart';
 class CompletedPickupsPage extends StatelessWidget {
   const CompletedPickupsPage({super.key});
 
-  /// MARK COMPLETED + SEND NOTIFICATION
   Future<void> markCompleted(String docId, String userId) async {
     try {
-      await FirebaseFirestore.instance
-          .collection("pickup_requests")
-          .doc(docId)
-          .update({
-        "status": "Completed",
-      });
-
-      /// ADD NOTIFICATION
+      await FirebaseFirestore.instance.collection("pickup_requests").doc(docId).update({"status": "Completed"});
       await FirebaseFirestore.instance.collection("notifications").add({
         "userId": userId,
-        "message": "Your pickup has been completed",
+        "message": "Your pickup has been completed. Thank you for recycling!",
         "createdAt": Timestamp.now(),
       });
-
     } catch (e) {
-      print("Error completing pickup: $e");
+      debugPrint("Error completing pickup: $e");
     }
   }
 
   @override
   Widget build(BuildContext context) {
-
     String currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Completed Pickups"),
-      ),
+      backgroundColor: const Color(0xFFF0F4FF),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              child: const Text("Completed Pickups", style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Color(0xFF1B2C4E))),
+            ),
 
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("pickup_requests")
-            .orderBy("createdAt", descending: true)
-            .snapshots(),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection("pickup_requests")
+                    .orderBy("createdAt", descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFF1A3A6C)));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 64, color: Colors.grey.shade300),
+                          const SizedBox(height: 16),
+                          const Text("No requests found", style: TextStyle(fontSize: 16, color: Color(0xFF9CA3AF))),
+                        ],
+                      ),
+                    );
+                  }
 
-        builder: (context, snapshot) {
+                  var requests = snapshot.data!.docs;
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: requests.length,
+                    itemBuilder: (context, index) {
+                      var data = requests[index].data() as Map<String, dynamic>;
+                      String docId = requests[index].id;
+                      String status = data["status"] ?? "Pending";
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No requests found"));
-          }
+                      bool isAcceptedByMe = data.containsKey("acceptedBy") && data["acceptedBy"] == currentUserId;
 
-          var requests = snapshot.data!.docs;
+                      Color statusColor;
+                      switch (status) {
+                        case "Completed": statusColor = const Color(0xFF2D6A4F); break;
+                        case "Accepted": statusColor = const Color(0xFF1A3A6C); break;
+                        default: statusColor = const Color(0xFFE65100);
+                      }
 
-          return ListView.builder(
-            itemCount: requests.length,
-            itemBuilder: (context, index) {
-
-              var data = requests[index].data() as Map<String, dynamic>;
-              String docId = requests[index].id;
-
-              bool isAcceptedByMe =
-                  data.containsKey("acceptedBy") &&
-                  data["acceptedBy"] == currentUserId;
-
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-
-                child: ListTile(
-                  title: Text(
-                    data["device"] ?? "Unknown Device",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 5),
-
-                      Text("📍 Address: ${data["address"] ?? ""}"),
-                      Text("📝 Description: ${data["description"] ?? ""}"),
-                      Text("📌 Status: ${data["status"] ?? ""}"),
-                    ],
-                  ),
-
-                  /// 🔥 MAIN LOGIC HERE
-                  trailing: data["status"] == "Accepted"
-                      ? isAcceptedByMe
-                          ? ElevatedButton(
-                              onPressed: () {
-                                markCompleted(docId, data["userId"]);
-                              },
-                              child: const Text("Complete"),
-                            )
-                          : const Text(
-                              "Assigned to other",
-                              style: TextStyle(color: Colors.grey),
-                            )
-
-                      : data["status"] == "Completed"
-                          ? const Text(
-                              "Completed",
-                              style: TextStyle(color: Colors.green),
-                            )
-
-                      : const Text(
-                          "Pending",
-                          style: TextStyle(color: Colors.orange),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
-                ),
-              );
-            },
-          );
-        },
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    status == "Completed" ? Icons.check_circle_rounded : Icons.local_shipping_rounded,
+                                    color: statusColor,
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(data["device"] ?? "Unknown Device", style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF1B2C4E))),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(status, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusColor)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text("📍 ${data["address"] ?? ""}", style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                            if ((data["description"] ?? "").isNotEmpty)
+                              Text("📝 ${data["description"]}", style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280))),
+                            if (status == "Accepted") ...[
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                child: isAcceptedByMe
+                                    ? ElevatedButton(
+                                        onPressed: () => markCompleted(docId, data["userId"]),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF2D6A4F),
+                                          foregroundColor: Colors.white,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        child: const Text("Mark Complete"),
+                                      )
+                                    : Container(
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(color: const Color(0xFFF3F4F6), borderRadius: BorderRadius.circular(10)),
+                                        child: const Text("Assigned to other collector", style: TextStyle(color: Color(0xFF9CA3AF), fontSize: 13)),
+                                      ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import '../view_location.dart';
 
 class MyRequestsPage extends StatelessWidget {
@@ -12,164 +11,194 @@ class MyRequestsPage extends StatelessWidget {
     String userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("My Requests"),
-      ),
-
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("pickup_requests")
-            .where("userId", isEqualTo: userId)
-            .snapshots(),
-
-        builder: (context, snapshot) {
-
-          /// LOADING
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          /// ERROR
-          if (snapshot.hasError) {
-            return Center(child: Text("Error: ${snapshot.error}"));
-          }
-
-          /// NO DATA
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No requests yet"));
-          }
-
-          var requests = snapshot.data!.docs;
-
-          return ListView.builder(
-            itemCount: requests.length,
-            itemBuilder: (context, index) {
-
-              var data = requests[index].data() as Map<String, dynamic>;
-
-              String status = data["status"] ?? "Pending";
-
-              Color statusColor;
-              IconData statusIcon;
-
-              switch (status) {
-                case "Accepted":
-                  statusColor = Colors.blue;
-                  statusIcon = Icons.local_shipping;
-                  break;
-                case "Completed":
-                  statusColor = Colors.green;
-                  statusIcon = Icons.check_circle;
-                  break;
-                case "Arrived":
-                  statusColor = Colors.purple;
-                  statusIcon = Icons.location_on;
-                  break;
-                default:
-                  statusColor = Colors.orange;
-                  statusIcon = Icons.hourglass_bottom;
-              }
-
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                elevation: 3,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+      backgroundColor: const Color(0xFFF4F7F0),
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ─── Header ────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+              color: const Color(0xFFF4F7F0),
+              child: const Text(
+                "My Requests",
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF1B3A2D),
                 ),
+              ),
+            ),
 
-                child: ListTile(
-                  leading: Icon(statusIcon, color: statusColor),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection("pickup_requests")
+                    .where("userId", isEqualTo: userId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFF2D6A4F)));
+                  }
+                  if (snapshot.hasError) {
+                    return Center(child: Text("Something went wrong", style: TextStyle(color: Colors.red.shade400)));
+                  }
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.inbox_rounded, size: 64, color: Colors.grey.shade300),
+                          const SizedBox(height: 16),
+                          const Text("No pickup requests yet", style: TextStyle(fontSize: 16, color: Color(0xFF9CA3AF))),
+                          const SizedBox(height: 4),
+                          const Text("Tap Request Pickup to get started", style: TextStyle(fontSize: 13, color: Color(0xFFD1D5DB))),
+                        ],
+                      ),
+                    );
+                  }
 
-                  title: Text(
-                    data["device"] ?? "Unknown Device",
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  var requests = snapshot.data!.docs;
 
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 5),
-                      Text("📍 ${data["address"] ?? ""}"),
-                      Text("📝 ${data["description"] ?? ""}"),
-                    ],
-                  ),
+                  return ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    itemCount: requests.length,
+                    itemBuilder: (context, index) {
+                      var data = requests[index].data() as Map<String, dynamic>;
+                      String status = data["status"] ?? "Pending";
 
-                  /// ✅ FIXED TRAILING (NO OVERFLOW + SAFE)
-                  trailing: SizedBox(
-                    width: 90,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
+                      final statusConfig = _statusConfig(status);
 
-                        /// STATUS
-                        Text(
-                          status,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE5E7EB)),
                         ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: statusConfig['bg'] as Color,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(statusConfig['icon'] as IconData, color: statusConfig['color'] as Color, size: 20),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          data["device"] ?? "Unknown Device",
+                                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1B3A2D)),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: statusConfig['bg'] as Color,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            status,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: statusConfig['color'] as Color,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                              const SizedBox(height: 12),
+                              _infoRow(Icons.location_on_outlined, data["address"] ?? ""),
+                              if ((data["description"] ?? "").isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                _infoRow(Icons.notes_rounded, data["description"]),
+                              ],
 
-                        const SizedBox(height: 5),
-
-                        /// TRACK BUTTON
-                        if (status == "Accepted" || status == "Arrived")
-                          GestureDetector(
-                            onTap: () {
-
-                              /// 🔥 SAFE CHECK (NO CRASH)
-                              if (data["lat"] == null ||
-                                  data["lng"] == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text("Location not available")),
-                                );
-                                return;
-                              }
-
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => ViewLocationPage(
-
-                                    /// USER LOCATION
-                                    lat: (data["lat"] as num).toDouble(),
-                                    lng: (data["lng"] as num).toDouble(),
-
-                                    /// COLLECTOR LOCATION (SAFE)
-                                    collectorLat:
-                                        data["collectorLat"] != null
-                                            ? (data["collectorLat"] as num)
-                                                .toDouble()
-                                            : null,
-
-                                    collectorLng:
-                                        data["collectorLng"] != null
-                                            ? (data["collectorLng"] as num)
-                                                .toDouble()
-                                            : null,
+                              // Track button
+                              if (status == "Accepted" || status == "Arrived") ...[
+                                const SizedBox(height: 12),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () {
+                                      if (data["lat"] == null || data["lng"] == null) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(content: Text("Location not available")),
+                                        );
+                                        return;
+                                      }
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => ViewLocationPage(
+                                          lat: (data["lat"] as num).toDouble(),
+                                          lng: (data["lng"] as num).toDouble(),
+                                          collectorLat: data["collectorLat"] != null ? (data["collectorLat"] as num).toDouble() : null,
+                                          collectorLng: data["collectorLng"] != null ? (data["collectorLng"] as num).toDouble() : null,
+                                        ),
+                                      ));
+                                    },
+                                    icon: const Icon(Icons.my_location_rounded, size: 16),
+                                    label: const Text("Track Collector"),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: const Color(0xFF2D6A4F),
+                                      side: const BorderSide(color: Color(0xFF2D6A4F)),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                    ),
                                   ),
                                 ),
-                              );
-                            },
-                            child: const Text(
-                              "Track",
-                              style: TextStyle(
-                                color: Colors.blue,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
+                              ],
+                            ],
                           ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          );
-        },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _infoRow(IconData icon, String text) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: const Color(0xFF9CA3AF)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(text, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)), overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    );
+  }
+
+  Map<String, dynamic> _statusConfig(String status) {
+    switch (status) {
+      case "Accepted":
+        return {'icon': Icons.local_shipping_rounded, 'color': const Color(0xFF1565C0), 'bg': const Color(0xFFE3F2FD)};
+      case "Completed":
+        return {'icon': Icons.check_circle_rounded, 'color': const Color(0xFF2D6A4F), 'bg': const Color(0xFFE8F5E9)};
+      case "Arrived":
+        return {'icon': Icons.location_on_rounded, 'color': const Color(0xFF7B1FA2), 'bg': const Color(0xFFF3E5F5)};
+      default:
+        return {'icon': Icons.hourglass_bottom_rounded, 'color': const Color(0xFFE65100), 'bg': const Color(0xFFFFF3E0)};
+    }
   }
 }
