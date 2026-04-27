@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import '../view_location.dart';
 
 class MyRequestsPage extends StatelessWidget {
@@ -16,17 +17,11 @@ class MyRequestsPage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─── Header ────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
-              color: const Color(0xFFF4F7F0),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
               child: const Text(
                 "My Requests",
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF1B3A2D),
-                ),
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: Color(0xFF1B3A2D)),
               ),
             ),
 
@@ -65,8 +60,8 @@ class MyRequestsPage extends StatelessWidget {
                     itemCount: requests.length,
                     itemBuilder: (context, index) {
                       var data = requests[index].data() as Map<String, dynamic>;
+                      String docId = requests[index].id; // ← needed for live tracking
                       String status = data["status"] ?? "Pending";
-
                       final statusConfig = _statusConfig(status);
 
                       return Container(
@@ -100,7 +95,7 @@ class MyRequestsPage extends StatelessWidget {
                                           data["device"] ?? "Unknown Device",
                                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF1B3A2D)),
                                         ),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(height: 3),
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                           decoration: BoxDecoration(
@@ -109,11 +104,7 @@ class MyRequestsPage extends StatelessWidget {
                                           ),
                                           child: Text(
                                             status,
-                                            style: TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: statusConfig['color'] as Color,
-                                            ),
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: statusConfig['color'] as Color),
                                           ),
                                         ),
                                       ],
@@ -121,16 +112,59 @@ class MyRequestsPage extends StatelessWidget {
                                   ),
                                 ],
                               ),
+
                               const SizedBox(height: 12),
                               const Divider(height: 1, color: Color(0xFFF3F4F6)),
-                              const SizedBox(height: 12),
-                              _infoRow(Icons.location_on_outlined, data["address"] ?? ""),
+                              const SizedBox(height: 10),
+
+                              // Address (real name now)
+                              Row(
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 14, color: Color(0xFF9CA3AF)),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      data["address"] ?? "",
+                                      style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+
                               if ((data["description"] ?? "").isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                _infoRow(Icons.notes_rounded, data["description"]),
+                                const SizedBox(height: 5),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.notes_rounded, size: 14, color: Color(0xFF9CA3AF)),
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Text(data["description"], style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)), overflow: TextOverflow.ellipsis),
+                                    ),
+                                  ],
+                                ),
                               ],
 
-                              // Track button
+                              // "Almost there" banner when status is Arrived
+                              if (status == "Arrived") ...[
+                                const SizedBox(height: 10),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3E5F5),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.local_shipping_rounded, size: 14, color: Color(0xFF7B1FA2)),
+                                      SizedBox(width: 6),
+                                      Text("Collector is almost at your location!", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF7B1FA2))),
+                                    ],
+                                  ),
+                                ),
+                              ],
+
+                              // Track button (Accepted or Arrived)
                               if (status == "Accepted" || status == "Arrived") ...[
                                 const SizedBox(height: 12),
                                 SizedBox(
@@ -139,21 +173,23 @@ class MyRequestsPage extends StatelessWidget {
                                     onPressed: () {
                                       if (data["lat"] == null || data["lng"] == null) {
                                         ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text("Location not available")),
+                                          const SnackBar(content: Text("Location not available yet")),
                                         );
                                         return;
                                       }
-                                      Navigator.push(context, MaterialPageRoute(
-                                        builder: (_) => ViewLocationPage(
-                                          lat: (data["lat"] as num).toDouble(),
-                                          lng: (data["lng"] as num).toDouble(),
-                                          collectorLat: data["collectorLat"] != null ? (data["collectorLat"] as num).toDouble() : null,
-                                          collectorLng: data["collectorLng"] != null ? (data["collectorLng"] as num).toDouble() : null,
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ViewLocationPage(
+                                            lat: (data["lat"] as num).toDouble(),
+                                            lng: (data["lng"] as num).toDouble(),
+                                            docId: docId, // ← passes docId for live stream
+                                          ),
                                         ),
-                                      ));
+                                      );
                                     },
                                     icon: const Icon(Icons.my_location_rounded, size: 16),
-                                    label: const Text("Track Collector"),
+                                    label: const Text("Track Collector Live"),
                                     style: OutlinedButton.styleFrom(
                                       foregroundColor: const Color(0xFF2D6A4F),
                                       side: const BorderSide(color: Color(0xFF2D6A4F)),
@@ -174,18 +210,6 @@ class MyRequestsPage extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 15, color: const Color(0xFF9CA3AF)),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Text(text, style: const TextStyle(fontSize: 13, color: Color(0xFF6B7280)), overflow: TextOverflow.ellipsis),
-        ),
-      ],
     );
   }
 
